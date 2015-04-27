@@ -25,7 +25,6 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -41,9 +40,9 @@ public class MainActivity extends ActionBarActivity {
 
     Location lastLocation;
 
-    Double locationLat;
+    Double locationLat = 0.0;
 
-    Double locationLong;
+    Double locationLong = 0.0;
 
     private double lastAccuracy = (double) 1e10;
     private long lastAccuracyTime = 0;
@@ -53,12 +52,8 @@ public class MainActivity extends ActionBarActivity {
     private static final float GOOD_ACCURACY_METERS = 100;
 
     // This is an id for my app, to keep the key space separate from other apps.
-    private static final String MY_APP_ID = "shivamdave_bboard";
 
     private static final String SERVER_URL_PREFIX = "https://luca-teaching.appspot.com/store/default/";
-
-    // To remember the favorite account.
-    public static final String PREF_ACCOUNT = "pref_account";
 
     // To remember the post we received.
     public static final String PREF_POSTS = "pref_posts";
@@ -240,7 +235,9 @@ public class MainActivity extends ActionBarActivity {
     };
 
     public void clickButton(View v) {
-
+        if(lastLocation == null) {
+            return;
+        }
         // Get the text we want to send.
         EditText et = (EditText) findViewById(R.id.editText);
         String msg = et.getText().toString();
@@ -252,14 +249,18 @@ public class MainActivity extends ActionBarActivity {
         locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
 
-        myCallSpec.url = SERVER_URL_PREFIX + "post_msg.json";
+        String postUrl = SERVER_URL_PREFIX + "put_local";
+        myCallSpec.url = postUrl;
         myCallSpec.context = MainActivity.this;
-        // Let's add the parameters.
-        HashMap<String, String> m = new HashMap<String, String>();
-        m.put("app_id", MY_APP_ID);
-        m.put("msg", msg);
+        //Let's add the parameters.
+        HashMap<String, String> tempHash = new HashMap<String, String>();
+        tempHash.put("msg", msg);
+        tempHash.put("lat", locationLat.toString());
+        tempHash.put("lng", locationLong.toString());
+        tempHash.put("msgid", reallyComputeHash(msg));
 
-        myCallSpec.setParams(m);
+
+        myCallSpec.setParams(tempHash);
         // Actual server call.
         if (uploader != null) {
             // There was already an upload in progress.
@@ -268,7 +269,6 @@ public class MainActivity extends ActionBarActivity {
         uploader = new ServerCall();
         uploader.execute(myCallSpec);
     }
-
 
     private String reallyComputeHash(String s) {
         // Computes the crypto hash of string s, in a web-safe format.
@@ -312,17 +312,17 @@ public class MainActivity extends ActionBarActivity {
     }
 
     private void displayResult(String result) {
-        Gson gson = new Gson();
-        MessageList ml = gson.fromJson(result, MessageList.class);
-        // Fills aList, so we can fill the listView.
-        aList.clear();
-        for (int i = 0; i < ml.messages.length; i++) {
-            ListElement ael = new ListElement();
-            ael.textLabel = ml.messages[i];
-            ael.buttonLabel = "Click";
-            aList.add(ael);
-        }
-        aa.notifyDataSetChanged();
+//        Gson gson = new Gson();
+//        MessageList ml = gson.fromJson(result, MessageList.class);
+//        // Fills aList, so we can fill the listView.
+//        aList.clear();
+//        for (int i = 0; i < ml.messages.length; i++) {
+//            ListElement ael = new ListElement();
+//            ael.textLabel = ml.messages[i];
+//            ael.buttonLabel = "Click";
+//            aList.add(ael);
+//        }
+//        aa.notifyDataSetChanged();
     }
 
 
