@@ -2,14 +2,19 @@ package com.cmps121.shivamndave.hw2_171211;
 
 import com.google.gson.Gson;
 
+import android.accounts.Account;
+import android.accounts.AccountManager;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Base64;
 import android.util.Log;
+import android.util.Patterns;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -20,6 +25,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -28,11 +34,17 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.regex.Pattern;
 
 
 public class MainActivity extends ActionBarActivity {
 
     Location lastLocation;
+
+    Double locationLat;
+
+    Double locationLong;
+
     private double lastAccuracy = (double) 1e10;
     private long lastAccuracyTime = 0;
 
@@ -41,7 +53,7 @@ public class MainActivity extends ActionBarActivity {
     private static final float GOOD_ACCURACY_METERS = 100;
 
     // This is an id for my app, to keep the key space separate from other apps.
-    private static final String MY_APP_ID = "luca_bboard";
+    private static final String MY_APP_ID = "shivamdave_bboard";
 
     private static final String SERVER_URL_PREFIX = "https://luca-teaching.appspot.com/store/default/";
 
@@ -60,7 +72,10 @@ public class MainActivity extends ActionBarActivity {
     private ArrayList<String> accountList;
 
     private class ListElement {
-        ListElement() {};
+        ListElement() {
+        }
+
+        ;
 
         public String textLabel;
         public String buttonLabel;
@@ -91,7 +106,7 @@ public class MainActivity extends ActionBarActivity {
                 newView = new LinearLayout(getContext());
                 String inflater = Context.LAYOUT_INFLATER_SERVICE;
                 LayoutInflater vi = (LayoutInflater) getContext().getSystemService(inflater);
-                vi.inflate(resource,  newView, true);
+                vi.inflate(resource, newView, true);
             } else {
                 newView = (LinearLayout) convertView;
             }
@@ -149,8 +164,26 @@ public class MainActivity extends ActionBarActivity {
     @Override
     protected void onStart() {
         super.onStart();
+        accountList = getAccounts();
+        // Builds an adapter between accountList and the spinner, using R.layout.spinner_layout
+        // ArrayAdapter<String> myAdapter = ...
+        // sp.setAdapter(myAdapter);
+        // Reads the preferences, to set the last preferred account as the default one.
     }
 
+    private ArrayList<String> getAccounts() {
+        // From http://stackoverflow.com/questions/2112965/how-to-get-the-android-devices-primary-e-mail-address
+        ArrayList<String> emails = new ArrayList<String>();
+        Pattern emailPattern = Patterns.EMAIL_ADDRESS; // API level 8+
+        Account[] accounts = AccountManager.get(this).getAccounts();
+        for (Account account : accounts) {
+            if (emailPattern.matcher(account.name).matches()) {
+                String possibleEmail = account.name;
+                emails.add(possibleEmail);
+            }
+        }
+        return emails;
+    }
 
     @Override
     protected void onResume() {
@@ -162,12 +195,21 @@ public class MainActivity extends ActionBarActivity {
         if (result != null) {
             displayResult(result);
         }
-    }
 
+        LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+    }
 
 
     @Override
     protected void onPause() {
+        // Stops the location updates.
+        LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        locationManager.removeUpdates(locationListener);
+        // Disables the submit button.
+        Button submitButton = (Button) findViewById(R.id.button);
+        submitButton.setEnabled(false);
         // Stops the upload if any.
         if (uploader != null) {
             uploader.cancel(true);
@@ -176,6 +218,26 @@ public class MainActivity extends ActionBarActivity {
         super.onPause();
     }
 
+    LocationListener locationListener = new LocationListener() {
+        @Override
+        public void onLocationChanged(Location location) {
+            lastLocation = location;
+            locationLat = location.getLatitude();
+            locationLong = location.getLongitude();
+        }
+
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) {
+        }
+
+        @Override
+        public void onProviderEnabled(String provider) {
+        }
+
+        @Override
+        public void onProviderDisabled(String provider) {
+        }
+    };
 
     public void clickButton(View v) {
 
@@ -186,13 +248,17 @@ public class MainActivity extends ActionBarActivity {
         // Then, we start the call.
         PostMessageSpec myCallSpec = new PostMessageSpec();
 
+        LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
 
         myCallSpec.url = SERVER_URL_PREFIX + "post_msg.json";
         myCallSpec.context = MainActivity.this;
         // Let's add the parameters.
-        HashMap<String,String> m = new HashMap<String,String>();
+        HashMap<String, String> m = new HashMap<String, String>();
         m.put("app_id", MY_APP_ID);
         m.put("msg", msg);
+
         myCallSpec.setParams(m);
         // Actual server call.
         if (uploader != null) {
@@ -229,6 +295,8 @@ public class MainActivity extends ActionBarActivity {
         public void useResult(Context context, String result) {
             if (result == null) {
                 // Do something here, e.g. tell the user that the server cannot be contacted.
+
+
                 Log.i(LOG_TAG, "The server call failed.");
             } else {
                 // Translates the string result, decoding the Json.
@@ -242,7 +310,6 @@ public class MainActivity extends ActionBarActivity {
             }
         }
     }
-
 
     private void displayResult(String result) {
         Gson gson = new Gson();
