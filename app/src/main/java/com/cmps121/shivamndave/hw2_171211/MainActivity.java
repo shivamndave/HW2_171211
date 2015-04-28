@@ -48,8 +48,6 @@ public class MainActivity extends ActionBarActivity {
 
     private static final String LOG_TAG = "lclicker";
 
-    private static final float GOOD_ACCURACY_METERS = 100;
-
     // This is an id for my app, to keep the key space separate from other apps.
 
     private static final String SERVER_URL_PREFIX = "https://luca-teaching.appspot.com/store/default/";
@@ -64,8 +62,6 @@ public class MainActivity extends ActionBarActivity {
         ListElement() {
         }
 
-        ;
-
         public String textLabel;
         public String timeLabel;
     }
@@ -73,6 +69,7 @@ public class MainActivity extends ActionBarActivity {
 
     private ArrayList<ListElement> aList;
 
+    // Array Adapter used to show the list of incoming messages
     private class MyAdapter extends ArrayAdapter<ListElement> {
 
         int resource;
@@ -105,8 +102,8 @@ public class MainActivity extends ActionBarActivity {
             TextView tv = (TextView) newView.findViewById(R.id.itemText);
             TextView ts = (TextView) newView.findViewById(R.id.timeStampText);
 
-            //Button b = (Button) newView.findViewById(R.id.itemButton);
             tv.setText(w.textLabel);
+
             String parsedTs = parseTs(w.timeLabel);
             ts.setText(parsedTs);
 
@@ -127,6 +124,7 @@ public class MainActivity extends ActionBarActivity {
     }
 
     // citation: Piazza Post: "For anyone still having trouble the timestamp"
+    // This presents the timestamp in a presentable way using the day and time
     private String parseTs(String ts) {
         DateFormat formatTs = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ss");
         formatTs.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -146,6 +144,11 @@ public class MainActivity extends ActionBarActivity {
     private MyAdapter aa;
 
 
+    // Also *note* the spinNtf is first called as gone
+    // here, but it is visible when a click happens
+    // on a button and then is invisible onResume/location change
+
+    // On create function that is first called
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -155,6 +158,7 @@ public class MainActivity extends ActionBarActivity {
         createAdapter();
     }
 
+    // First initialization of the adapter when starting the app
     private void createAdapter() {
         Gson gson = new Gson();
         String result = getRecentMessages();
@@ -174,6 +178,7 @@ public class MainActivity extends ActionBarActivity {
     }
 
 
+    // On starting the app's activities
     @Override
     protected void onStart() {
         super.onStart();
@@ -184,6 +189,7 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
+    // When resuming the app between server calls
     @Override
     protected void onResume() {
         super.onResume();
@@ -194,6 +200,8 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
+    // This function gets the location info, it is called whenever we want to
+    // get location information and store the longitude/latitude information
     private void getLocationInfo() {
         LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
@@ -205,12 +213,12 @@ public class MainActivity extends ActionBarActivity {
         locationLong = lastLocation.getLongitude();
     }
 
+    // Function that gets recent messages, called in numerous functions to have calls to the server
     private String getRecentMessages() {
         getLocationInfo();
         PostMessageSpec myCallSpec = new PostMessageSpec();
 
-        String pullUrl = SERVER_URL_PREFIX + "get_local";
-        myCallSpec.url = pullUrl;
+        myCallSpec.url = SERVER_URL_PREFIX + "get_local";
         myCallSpec.context = MainActivity.this;
 
         //Let's add the parameters.
@@ -231,6 +239,7 @@ public class MainActivity extends ActionBarActivity {
     }
 
 
+    // Whenever paused, we stop getting the location
     @Override
     protected void onPause() {
         String result = getRecentMessages();
@@ -249,6 +258,7 @@ public class MainActivity extends ActionBarActivity {
         super.onPause();
     }
 
+    // Location listener that updates the lat/lng at the bottom dynamically
     LocationListener locationListener = new LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
@@ -278,6 +288,9 @@ public class MainActivity extends ActionBarActivity {
         }
     };
 
+    // Post button that gets the text from the edittext (then clears it),
+    // packages it into a PostMessageSpec with a HashMap, and then executes
+    // it using the uploader
     public void clickButton(View v) {
         spinNtf.setVisibility(View.VISIBLE);
         if (lastLocation == null) {
@@ -293,8 +306,7 @@ public class MainActivity extends ActionBarActivity {
 
         getLocationInfo();
 
-        String postUrl = SERVER_URL_PREFIX + "put_local";
-        myCallSpec.url = postUrl;
+        myCallSpec.url = SERVER_URL_PREFIX + "put_local";;
         myCallSpec.context = MainActivity.this;
         //Let's add the parameters.
         HashMap<String, String> tempHash = new HashMap<String, String>();
@@ -314,6 +326,7 @@ public class MainActivity extends ActionBarActivity {
         uploader.execute(myCallSpec);
     }
 
+    // Refresh button simply gets the recent messages and then displays them
     public void clickRefreshButton(View v) {
         spinNtf.setVisibility(View.VISIBLE);
         String result = getRecentMessages();
@@ -322,7 +335,7 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
-
+    // Used to create the random msgid that we upload to post a message
     private String reallyComputeHash(String s) {
         // Computes the crypto hash of string s, in a web-safe format.
         try {
@@ -331,25 +344,22 @@ public class MainActivity extends ActionBarActivity {
             digest.update("My secret key".getBytes());
             byte[] md = digest.digest();
             // Now we need to make it web safe.
-            String safeDigest = Base64.encodeToString(md, Base64.URL_SAFE);
-            return safeDigest;
+            return Base64.encodeToString(md, Base64.URL_SAFE);
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
         return "";
     }
 
-
-    /**
-     * This class is used to do the HTTP call, and it specifies how to use the result.
-     */
+    // This class is used to do the HTTP call, and it specifies how to use the result.
+    // Also shows error message when server calls fail
     class PostMessageSpec extends ServerCallSpec {
         @Override
         public void useResult(Context context, String result) {
             if (result == null) {
-                // Do something here, e.g. tell the user that the server cannot be contacted.
-
-
+                int duration = Toast.LENGTH_SHORT;
+                Toast toast = Toast.makeText(context, "Server call failed", duration);
+                toast.show();
                 Log.i(LOG_TAG, "The server call failed.");
             } else {
                 // Translates the string result, decoding the Json.
@@ -364,6 +374,8 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
+    // Used to get the message list, get the info needed (message & timestamp), then notifies
+    // the adapter that this change has been made
     private void displayResult(String result) {
         Gson gson = new Gson();
         MessageList ml = gson.fromJson(result, MessageList.class);
