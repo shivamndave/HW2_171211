@@ -5,6 +5,5 @@ package com.cmps121.shivamndave.hw2_171211;
  */
 public class MessageList {
     public MessageList() {};
-
-    String[] messages;
+    MsgInfo[] messages;
 }

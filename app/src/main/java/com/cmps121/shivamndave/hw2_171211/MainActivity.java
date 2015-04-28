@@ -235,7 +235,7 @@ public class MainActivity extends ActionBarActivity {
     };
 
     public void clickButton(View v) {
-        if(lastLocation == null) {
+        if (lastLocation == null) {
             return;
         }
         // Get the text we want to send.
@@ -312,17 +312,17 @@ public class MainActivity extends ActionBarActivity {
     }
 
     private void displayResult(String result) {
-//        Gson gson = new Gson();
-//        MessageList ml = gson.fromJson(result, MessageList.class);
-//        // Fills aList, so we can fill the listView.
-//        aList.clear();
-//        for (int i = 0; i < ml.messages.length; i++) {
-//            ListElement ael = new ListElement();
-//            ael.textLabel = ml.messages[i];
-//            ael.buttonLabel = "Click";
-//            aList.add(ael);
-//        }
-//        aa.notifyDataSetChanged();
+        Gson gson = new Gson();
+        MessageList ml = gson.fromJson(result, MessageList.class);
+        // Fills aList, so we can fill the listView.
+        aList.clear();
+        for (int i = 0; i < ml.messages.length; i++) {
+            ListElement ael = new ListElement();
+            ael.textLabel = ml.messages[i].msg;
+            ael.buttonLabel = "Click";
+            aList.add(ael);
+        }
+        aa.notifyDataSetChanged();
     }
 
 
