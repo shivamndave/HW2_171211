@@ -185,15 +185,35 @@ public class MainActivity extends ActionBarActivity {
         super.onResume();
         // First super, then do stuff.
         // Let us display the previous posts, if any.
-        SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
-        String result = settings.getString(PREF_POSTS, null);
-        if (result != null) {
-            displayResult(result);
-        }
 
         LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+
+        String result = getRecentMessages();
+        if (result != null) {
+            displayResult(result);
+        }
+    }
+
+    private String getRecentMessages() {
+        PostMessageSpec myCallSpec = new PostMessageSpec();
+
+        String pullUrl = SERVER_URL_PREFIX + "get_local";
+        myCallSpec.url = pullUrl;
+        myCallSpec.context = MainActivity.this;
+
+        //Let's add the parameters.
+        HashMap<String, String> tempHash = new HashMap<String, String>();
+        tempHash.put("lat", locationLat.toString());
+        tempHash.put("lng", locationLong.toString());
+
+        myCallSpec.setParams(tempHash);
+
+        SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
+        String result = settings.getString(myCallSpec.url, null);
+
+        return result;
     }
 
 
@@ -268,6 +288,7 @@ public class MainActivity extends ActionBarActivity {
         }
         uploader = new ServerCall();
         uploader.execute(myCallSpec);
+        et.setText("");
     }
 
     private String reallyComputeHash(String s) {
