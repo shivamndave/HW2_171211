@@ -46,9 +46,6 @@ public class MainActivity extends ActionBarActivity {
 
     protected ProgressBar spinNtf;
 
-    private double lastAccuracy = (double) 1e10;
-    private long lastAccuracyTime = 0;
-
     private static final String LOG_TAG = "lclicker";
 
     private static final float GOOD_ACCURACY_METERS = 100;
@@ -62,11 +59,6 @@ public class MainActivity extends ActionBarActivity {
 
     // Uploader.
     private ServerCall uploader;
-
-    // Remember whether we have already successfully checked in.
-    private boolean checkinSuccessful = false;
-
-    private ArrayList<String> accountList;
 
     private class ListElement {
         ListElement() {
@@ -143,7 +135,7 @@ public class MainActivity extends ActionBarActivity {
 
         try {
             longFormatDate = formatTs.parse(ts);
-            DateFormat outputFormatter = new SimpleDateFormat("EEEE',' hh:mm");
+            DateFormat outputFormatter = new SimpleDateFormat("EE',' h:mm aa");
             outputDate = outputFormatter.format(longFormatDate);
         } catch (ParseException e) {
             return null;
@@ -195,10 +187,6 @@ public class MainActivity extends ActionBarActivity {
     @Override
     protected void onResume() {
         super.onResume();
-
-        // First super, then do stuff.
-        // Let us display the previous posts, if any.
-
         String result = getRecentMessages();
         spinNtf.setVisibility(View.GONE);
         if (result != null) {
