@@ -1,9 +1,5 @@
 package com.cmps121.shivamndave.hw2_171211;
 
-import com.google.gson.Gson;
-
-import android.accounts.Account;
-import android.accounts.AccountManager;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.location.Location;
@@ -14,7 +10,6 @@ import android.preference.PreferenceManager;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Base64;
 import android.util.Log;
-import android.util.Patterns;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -25,24 +20,27 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.gson.Gson;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.regex.Pattern;
 
 
 public class MainActivity extends ActionBarActivity {
 
     Location lastLocation;
 
-    Double locationLat = 0.0;
+    protected Double locationLat = 0.0;
+    protected Double locationLong = 0.0;
 
-    Double locationLong = 0.0;
+    protected ProgressBar spinNtf;
 
     private double lastAccuracy = (double) 1e10;
     private long lastAccuracyTime = 0;
@@ -73,7 +71,7 @@ public class MainActivity extends ActionBarActivity {
         ;
 
         public String textLabel;
-        public String buttonLabel;
+        public String timeLabel;
     }
 
     private ArrayList<ListElement> aList;
@@ -108,23 +106,11 @@ public class MainActivity extends ActionBarActivity {
 
             // Fills in the view.
             TextView tv = (TextView) newView.findViewById(R.id.itemText);
-            Button b = (Button) newView.findViewById(R.id.itemButton);
-            tv.setText(w.textLabel);
-            b.setText(w.buttonLabel);
+            TextView ts = (TextView) newView.findViewById(R.id.timeStampText);
 
-            // Sets a listener for the button, and a tag for the button as well.
-            b.setTag(new Integer(position));
-            b.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    // Reacts to a button press.
-                    // Gets the integer tag of the button.
-                    String s = v.getTag().toString();
-                    int duration = Toast.LENGTH_SHORT;
-                    Toast toast = Toast.makeText(context, s, duration);
-                    toast.show();
-                }
-            });
+            //Button b = (Button) newView.findViewById(R.id.itemButton);
+            tv.setText(w.textLabel);
+            ts.setText(w.timeLabel);
 
             // Set a listener for the whole list item.
             newView.setTag(w.textLabel);
@@ -149,35 +135,26 @@ public class MainActivity extends ActionBarActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        spinNtf = (ProgressBar)findViewById(R.id.loadingNotif);
+        spinNtf.setVisibility(View.GONE);
         aList = new ArrayList<ListElement>();
         aa = new MyAdapter(this, R.layout.list_element, aList);
         ListView myListView = (ListView) findViewById(R.id.listView);
         myListView.setAdapter(aa);
-        aa.notifyDataSetChanged();
+        String result = getRecentMessages();
+        if (result != null) {
+            displayResult(result);
+        }
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        accountList = getAccounts();
-        // Builds an adapter between accountList and the spinner, using R.layout.spinner_layout
-        // ArrayAdapter<String> myAdapter = ...
-        // sp.setAdapter(myAdapter);
-        // Reads the preferences, to set the last preferred account as the default one.
-    }
-
-    private ArrayList<String> getAccounts() {
-        // From http://stackoverflow.com/questions/2112965/how-to-get-the-android-devices-primary-e-mail-address
-        ArrayList<String> emails = new ArrayList<String>();
-        Pattern emailPattern = Patterns.EMAIL_ADDRESS; // API level 8+
-        Account[] accounts = AccountManager.get(this).getAccounts();
-        for (Account account : accounts) {
-            if (emailPattern.matcher(account.name).matches()) {
-                String possibleEmail = account.name;
-                emails.add(possibleEmail);
-            }
+        String result = getRecentMessages();
+        spinNtf.setVisibility(View.GONE);
+        if (result != null) {
+            displayResult(result);
         }
-        return emails;
     }
 
     @Override
@@ -186,17 +163,18 @@ public class MainActivity extends ActionBarActivity {
         // First super, then do stuff.
         // Let us display the previous posts, if any.
 
-        LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
-
         String result = getRecentMessages();
+        spinNtf.setVisibility(View.GONE);
         if (result != null) {
             displayResult(result);
         }
     }
 
     private String getRecentMessages() {
+        LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+
         PostMessageSpec myCallSpec = new PostMessageSpec();
 
         String pullUrl = SERVER_URL_PREFIX + "get_local";
@@ -209,16 +187,25 @@ public class MainActivity extends ActionBarActivity {
         tempHash.put("lng", locationLong.toString());
 
         myCallSpec.setParams(tempHash);
+        if (uploader != null) {
+            // There was already an upload in progress.
+            uploader.cancel(true);
+        }
+        uploader = new ServerCall();
+        uploader.execute(myCallSpec);
 
         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
-        String result = settings.getString(myCallSpec.url, null);
-
-        return result;
+        return settings.getString(PREF_POSTS, null);
     }
 
 
     @Override
     protected void onPause() {
+        String result = getRecentMessages();
+        if (result != null) {
+            displayResult(result);
+        }
+        spinNtf.setVisibility(View.GONE);
         // Stops the location updates.
         LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         locationManager.removeUpdates(locationListener);
@@ -236,9 +223,17 @@ public class MainActivity extends ActionBarActivity {
     LocationListener locationListener = new LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
+            spinNtf.setVisibility(View.GONE);
+            TextView currentLocationTextView = (TextView) findViewById(R.id.currentlocview);
+
             lastLocation = location;
             locationLat = location.getLatitude();
             locationLong = location.getLongitude();
+
+            String Text = "Latitude: " + locationLat + " Longitude: " +
+                    locationLong;
+
+            currentLocationTextView.setText(Text);
         }
 
         @Override
@@ -255,6 +250,7 @@ public class MainActivity extends ActionBarActivity {
     };
 
     public void clickButton(View v) {
+        spinNtf.setVisibility(View.VISIBLE);
         if (lastLocation == null) {
             return;
         }
@@ -288,8 +284,16 @@ public class MainActivity extends ActionBarActivity {
         }
         uploader = new ServerCall();
         uploader.execute(myCallSpec);
-        et.setText("");
     }
+
+    public void clickRefreshButton(View v) {
+        spinNtf.setVisibility(View.VISIBLE);
+        String result = getRecentMessages();
+        if (result != null) {
+            displayResult(result);
+        }
+    }
+
 
     private String reallyComputeHash(String s) {
         // Computes the crypto hash of string s, in a web-safe format.
@@ -340,7 +344,7 @@ public class MainActivity extends ActionBarActivity {
         for (int i = 0; i < ml.messages.length; i++) {
             ListElement ael = new ListElement();
             ael.textLabel = ml.messages[i].msg;
-            ael.buttonLabel = "Click";
+            ael.timeLabel = ml.messages[i].ts;
             aList.add(ael);
         }
         aa.notifyDataSetChanged();
