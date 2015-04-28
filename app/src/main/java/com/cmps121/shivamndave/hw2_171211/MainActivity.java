@@ -8,6 +8,7 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v7.app.ActionBarActivity;
+import android.text.format.DateUtils;
 import android.util.Base64;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -16,7 +17,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -28,9 +28,14 @@ import com.google.gson.Gson;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.TimeZone;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -74,6 +79,7 @@ public class MainActivity extends ActionBarActivity {
         public String timeLabel;
     }
 
+
     private ArrayList<ListElement> aList;
 
     private class MyAdapter extends ArrayAdapter<ListElement> {
@@ -110,7 +116,8 @@ public class MainActivity extends ActionBarActivity {
 
             //Button b = (Button) newView.findViewById(R.id.itemButton);
             tv.setText(w.textLabel);
-            ts.setText(w.timeLabel);
+            String parsedTs = parseTs(w.timeLabel);
+            ts.setText(parsedTs);
 
             // Set a listener for the whole list item.
             newView.setTag(w.textLabel);
@@ -126,6 +133,23 @@ public class MainActivity extends ActionBarActivity {
 
             return newView;
         }
+    }
+
+    // citation: Piazza Post: "For anyone still having trouble the timestamp"
+    private String parseTs(String ts) {
+        DateFormat formatTs = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ss");
+        formatTs.setTimeZone(TimeZone.getTimeZone("GMT"));
+        Date longFormatDate;
+        String outputDate = "";
+
+        try {
+            longFormatDate = formatTs.parse(ts);
+            DateFormat outputFormatter = new SimpleDateFormat("EEEE',' hh:mm");
+            outputDate = outputFormatter.format(longFormatDate);
+        } catch (ParseException e) {
+            return null;
+        }
+        return outputDate;
     }
 
     private MyAdapter aa;

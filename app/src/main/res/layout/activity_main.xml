@@ -2,6 +2,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#ECECEC"
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
@@ -14,7 +15,8 @@
         android:id="@+id/listView"
         android:layout_alignParentTop="true"
         android:layout_above="@+id/editText"
-        android:paddingBottom="5dp" />
+        android:paddingBottom="5dp"
+        android:layout_marginBottom="3dp"/>
 
     <EditText
         android:layout_width="match_parent"
@@ -51,6 +53,7 @@
     <TextView
         android:layout_width="match_parent"
         android:id="@+id/currentlocview"
+        android:textColor="#000000"
         android:layout_height="30dp"
         android:layout_marginTop="-38dp"
         android:layout_alignParentBottom="true"
@@ -61,6 +64,5 @@
         android:id="@+id/loadingNotif"
         android:layout_width="match_parent"
         android:layout_height="20dp"
-        android:layout_alignParentBottom="true"
-        android:layout_marginTop="-3dp"/>
+        android:layout_alignParentBottom="true"/>
 </RelativeLayout>
