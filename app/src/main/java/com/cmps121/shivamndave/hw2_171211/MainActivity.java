@@ -37,8 +37,8 @@ public class MainActivity extends ActionBarActivity {
 
     Location lastLocation;
 
-    protected Double locationLat = 0.0;
-    protected Double locationLong = 0.0;
+    protected Double locationLat;
+    protected Double locationLong;
 
     protected ProgressBar spinNtf;
 
@@ -135,17 +135,29 @@ public class MainActivity extends ActionBarActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        spinNtf = (ProgressBar)findViewById(R.id.loadingNotif);
+        spinNtf = (ProgressBar) findViewById(R.id.loadingNotif);
         spinNtf.setVisibility(View.GONE);
+        createAdapter();
+    }
+
+    private void createAdapter() {
+        Gson gson = new Gson();
+        String result = getRecentMessages();
+        MessageList ml = gson.fromJson(result, MessageList.class);
         aList = new ArrayList<ListElement>();
+        // Fills aList, so we can fill the listView.
+        for (int i = 0; i < ml.messages.length; i++) {
+            ListElement ael = new ListElement();
+            ael.textLabel = ml.messages[i].msg;
+            ael.timeLabel = ml.messages[i].ts;
+            aList.add(ael);
+        }
+
         aa = new MyAdapter(this, R.layout.list_element, aList);
         ListView myListView = (ListView) findViewById(R.id.listView);
         myListView.setAdapter(aa);
-        String result = getRecentMessages();
-        if (result != null) {
-            displayResult(result);
-        }
     }
+
 
     @Override
     protected void onStart() {
@@ -160,6 +172,7 @@ public class MainActivity extends ActionBarActivity {
     @Override
     protected void onResume() {
         super.onResume();
+
         // First super, then do stuff.
         // Let us display the previous posts, if any.
 
@@ -170,11 +183,19 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
-    private String getRecentMessages() {
+    private void getLocationInfo() {
         LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+        lastLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        lastLocation.getLatitude();
+        lastLocation.getLongitude();
+        locationLat = lastLocation.getLatitude();
+        locationLong = lastLocation.getLongitude();
+    }
 
+    private String getRecentMessages() {
+        getLocationInfo();
         PostMessageSpec myCallSpec = new PostMessageSpec();
 
         String pullUrl = SERVER_URL_PREFIX + "get_local";
@@ -209,10 +230,7 @@ public class MainActivity extends ActionBarActivity {
         // Stops the location updates.
         LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         locationManager.removeUpdates(locationListener);
-        // Disables the submit button.
-        Button submitButton = (Button) findViewById(R.id.button);
-        submitButton.setEnabled(false);
-        // Stops the upload if any.
+
         if (uploader != null) {
             uploader.cancel(true);
             uploader = null;
@@ -257,13 +275,12 @@ public class MainActivity extends ActionBarActivity {
         // Get the text we want to send.
         EditText et = (EditText) findViewById(R.id.editText);
         String msg = et.getText().toString();
+        et.setText("");
 
         // Then, we start the call.
         PostMessageSpec myCallSpec = new PostMessageSpec();
 
-        LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+        getLocationInfo();
 
         String postUrl = SERVER_URL_PREFIX + "put_local";
         myCallSpec.url = postUrl;
