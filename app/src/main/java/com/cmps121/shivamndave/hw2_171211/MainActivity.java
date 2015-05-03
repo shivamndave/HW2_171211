@@ -164,14 +164,15 @@ public class MainActivity extends ActionBarActivity {
         String result = getRecentMessages();
         MessageList ml = gson.fromJson(result, MessageList.class);
         aList = new ArrayList<ListElement>();
-        // Fills aList, so we can fill the listView.
-        for (int i = 0; i < ml.messages.length; i++) {
-            ListElement ael = new ListElement();
-            ael.textLabel = ml.messages[i].msg;
-            ael.timeLabel = ml.messages[i].ts;
-            aList.add(ael);
+        if (result != null) {
+            // Fills aList, so we can fill the listView.
+            for (int i = 0; i < ml.messages.length; i++) {
+                ListElement ael = new ListElement();
+                ael.textLabel = ml.messages[i].msg;
+                ael.timeLabel = ml.messages[i].ts;
+                aList.add(ael);
+            }
         }
-
         aa = new MyAdapter(this, R.layout.list_element, aList);
         ListView myListView = (ListView) findViewById(R.id.listView);
         myListView.setAdapter(aa);
@@ -306,7 +307,8 @@ public class MainActivity extends ActionBarActivity {
 
         getLocationInfo();
 
-        myCallSpec.url = SERVER_URL_PREFIX + "put_local";;
+        myCallSpec.url = SERVER_URL_PREFIX + "put_local";
+        ;
         myCallSpec.context = MainActivity.this;
         //Let's add the parameters.
         HashMap<String, String> tempHash = new HashMap<String, String>();
